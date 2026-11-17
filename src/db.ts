@@ -51,7 +51,7 @@ export async function exportBackup(){const data=await snapshot();const payload=J
 export async function saveSalesCounts(date:string, counts:SalesCounts){
   const values=[counts.calls,counts.emails,counts.messages];
   if(values.some(value=>!Number.isSafeInteger(value)||value<0||value>10000))throw Error('Enter whole numbers between 0 and 10,000');
-  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))throw Error('Invalid date');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Invalid date');
   const day=new Date(date+'T12:00:00').getDay();
   if(day===0||day===6)throw Error('Sales standards apply on weekdays');
   const total=counts.calls+counts.emails+counts.messages;
