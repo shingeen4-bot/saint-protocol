@@ -115,3 +115,12 @@ test('sales awards are distinct template IDs and together yield 20 XP',async()=>
  ];
  assert.equal(scoreActions(rewards).reduce((sum,a)=>sum+a.earned,0),20);
 });
+
+test('Sales entry numeric input and date validators accept expected values',()=>{
+ const app=fs.readFileSync(path.resolve(__dirname,'../src/App.tsx'),'utf8');
+ const db=fs.readFileSync(path.resolve(__dirname,'../src/db.ts'),'utf8');
+ assert.ok(app.includes("/^\\d+$/.test"),'numeric validator must match digits');
+ assert.ok(db.includes("/^\\d{4}-\\d{2}-\\d{2}$/.test"),'date validator must match ISO date');
+ assert.ok(!app.includes("/^\\\\d+$/.test"),'numeric regex must not escape digit class twice');
+ assert.ok(!db.includes("/^\\\\d{4}-\\\\d{2}-\\\\d{2}$/.test"),'date regex must not escape digit class twice');
+});
