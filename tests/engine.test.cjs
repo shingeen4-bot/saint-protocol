@@ -94,3 +94,24 @@ test('linked goals count actual logged habit sessions after creation, without do
  assert.deepEqual(goalProgress({...goal,current:2},actions),{current:4,auto:2,completed:true});
  assert.equal(goalProgress({...goal,linkedHabitId:undefined},actions).current,1);
 });
+
+test('weekday sales thresholds count calls once within 50 total contacts',async()=>{
+ const {salesSummary,salesMetricsId,SALES_OUTREACH_TARGET,SALES_CALLS_TARGET}=await engine;
+ const date='2026-11-17';
+ const sample=(calls,emails,messages)=>[{...action('1',date,'Sales totals','sales',0),id:salesMetricsId(date),metrics:{calls,emails,messages}}];
+ assert.equal(SALES_OUTREACH_TARGET,50);
+ assert.equal(SALES_CALLS_TARGET,30);
+ assert.deepEqual(((x)=>[x.total,x.outreachComplete,x.callsComplete])(salesSummary(sample(29,20,0),date)),[49,false,false]);
+ assert.deepEqual(((x)=>[x.total,x.outreachComplete,x.callsComplete])(salesSummary(sample(30,20,0),date)),[50,true,true]);
+ assert.deepEqual(((x)=>[x.total,x.outreachComplete,x.callsComplete])(salesSummary(sample(10,35,5),date)),[50,true,false]);
+ assert.equal(salesSummary(sample(30,20,0),'2026-11-18').total,0);
+});
+test('sales awards are distinct template IDs and together yield 20 XP',async()=>{
+ const {scoreActions,salesAwardId}=await engine;
+ const date='2026-11-17';
+ const rewards=[
+  {...action('1',date,'Outreach','sales',5),id:salesAwardId('outreach',date),templateId:'h-sales'},
+  {...action('2',date,'Calls','sales',15),id:salesAwardId('calls',date),templateId:'h-sales-calls'}
+ ];
+ assert.equal(scoreActions(rewards).reduce((sum,a)=>sum+a.earned,0),20);
+});
