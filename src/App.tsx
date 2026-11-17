@@ -19,9 +19,7 @@ const ATTR_ICONS:Record<Attribute,typeof Activity>={sales:BriefcaseBusiness,comm
 const LABELS:Record<Attribute,string>={sales:'Sales',communication:'Communication',presence:'Presence',discipline:'Discipline',resilience:'Resilience',physical:'Physical',knowledge:'Knowledge',business:'Business'};
 const EMPTY:Snapshot={actions:[],habits:[],goals:[],journal:[],transactions:[],settings:starterSettings,unlocks:[]};
 const formatNumber=(n:number)=>new Intl.NumberFormat('en-GB').format(n);
-const weekday=(date:string)=>new Date(`${date}T12:00:00`).toLocaleDateString('en-GB',{weekday:'short'});
 const shortDate=(date:string)=>new Date(`${date}T12:00:00`).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-const greet=()=>{const h=new Date().getHours();return h<12?'Good morning':h<17?'Good afternoon':'Overview';};
 const money=(n:number)=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP',maximumFractionDigits:2}).format(n);
 
 function Ring({value,size=106,label}:{value:number;size?:number;label?:string}){
