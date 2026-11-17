@@ -1,6 +1,6 @@
 export type Attribute = 'sales' | 'communication' | 'presence' | 'discipline' | 'resilience' | 'physical' | 'knowledge' | 'business';
 export type Category = 'routine' | 'milestone';
-export type Action = {id: string; date: string; createdAt: number; title: string; attribute: Attribute; baseXp: number; kind: Category; templateId?: string; note?: string; metrics?: {sets?:number; reps?:number; weight?:number; duration?:number};};
+export type Action = {id: string; date: string; createdAt: number; title: string; attribute: Attribute; baseXp: number; kind: Category; templateId?: string; note?: string; metrics?: {sets?:number; reps?:number; weight?:number; duration?:number;calls?:number;emails?:number;messages?:number};};
 export type Habit = {id: string; title: string; detail: string; attribute: Attribute; xp: number; enabled: boolean; frequency: 'daily' | 'weekdays';};
 export type Goal = {id:string; title:string; target:number; current:number; unit:string; linkedHabitId?:string; startedAt?:string; due?:string; attribute:Attribute; completed:boolean;};
 export type Journal = {id:string; date:string; text:string; mood:1|2|3|4|5; kind:'daily'|'review';};
@@ -12,7 +12,8 @@ export const attributes: Attribute[] = ['sales','communication','presence','disc
 export const allAttributes: Attribute[] = [...attributes];
 export const initialLevels: Record<Attribute,number> = {sales:1,communication:2,presence:3,discipline:2,resilience:4,physical:3,knowledge:3,business:1};
 export const defaultHabits: Habit[] = [
-  {id:'h-sales',title:'Sales practice',detail:'5 minutes minimum',attribute:'sales',xp:5,enabled:true,frequency:'weekdays'},
+  {id:'h-sales',title:'Daily outreach',detail:'50 total touches (calls + emails + LinkedIn)',attribute:'sales',xp:5,enabled:true,frequency:'weekdays'},
+  {id:'h-sales-calls',title:'Daily calls',detail:'30 calls minimum · counts towards outreach',attribute:'sales',xp:15,enabled:true,frequency:'weekdays'},
   {id:'h-read',title:'Read',detail:'5 minutes minimum',attribute:'knowledge',xp:5,enabled:true,frequency:'daily'},
   {id:'h-mobility',title:'Mobility work',detail:'Stretch and recover',attribute:'physical',xp:5,enabled:true,frequency:'daily'},
   {id:'h-move',title:'Physical activity',detail:'Train, walk or play',attribute:'physical',xp:10,enabled:true,frequency:'daily'},
