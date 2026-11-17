@@ -67,3 +67,11 @@ export function radarScaleMax(metrics:RadarMetric[], period:RadarPeriod){
   const step=period==='7d'?10:25;
   return Math.max(base,Math.ceil(top/step)*step);
 }
+
+/** Linked goals count completed logged sessions, while preserving optional manual progress. */
+export function goalProgress(goal: {current:number;target:number;completed:boolean;linkedHabitId?:string;startedAt?:string}, actions:ScoredAction[]){
+  const from=goal.startedAt || '0000-01-01';
+  const auto=goal.linkedHabitId ? actions.filter(a=>a.kind==='routine' && a.templateId===goal.linkedHabitId && a.date>=from).length : 0;
+  const current=Math.max(0,Math.min(goal.target,goal.current+auto));
+  return {current,auto,completed:goal.completed || current>=goal.target};
+}
