@@ -236,7 +236,7 @@ function SalesLogModal({counts,close,save}:{counts:ReturnType<typeof salesSummar
   const [messages,setMessages]=useState(String(counts.messages));
   const [busy,setBusy]=useState(false);
   const values=[calls,emails,messages];
-  const valid=values.every(value=>/^\\d+$/.test(value.trim())&&Number.isSafeInteger(Number(value))&&Number(value)<=10000);
+  const valid=values.every(value=>/^\d+$/.test(value.trim())&&Number.isSafeInteger(Number(value))&&Number(value)<=10000);
   const total=valid?values.reduce((sum,value)=>sum+Number(value),0):0;
   return <Overlay title="Sales activity" subtitle="Record your running totals for today." close={close}>
     <form className="modal-form" onSubmit={async e=>{e.preventDefault();if(!valid||busy)return;setBusy(true);try{await save({calls:Number(calls),emails:Number(emails),messages:Number(messages)});}finally{setBusy(false);}}}>
