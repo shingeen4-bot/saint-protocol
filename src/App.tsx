@@ -8,11 +8,11 @@ import {
 } from 'lucide-react';
 import {Bar,BarChart,CartesianGrid,PolarAngleAxis,PolarGrid,PolarRadiusAxis,Radar,RadarChart,ResponsiveContainer,Tooltip,XAxis,YAxis} from 'recharts';
 import {db,exportBackup,importSnapshot,initialise,snapshot} from './db';
-import {achievements, currentStreak, dateKey, dateOffset, last7, overallLevel, progressFor, radarMetrics, radarScaleMax, scoreActions,uid,type RadarPeriod} from './engine';
+import {achievements, currentStreak, dateKey, dateOffset, last7, overallLevel, progressFor, goalProgress, radarMetrics, radarScaleMax, scoreActions,uid,type RadarPeriod} from './engine';
 import {allAttributes,attributes,starterSettings,type Action,type Attribute,type Goal,type Habit,type Journal,type Settings,type Snapshot,type Transaction} from './types';
 
 type Screen='home'|'today'|'progress'|'goals'|'journal';
-type Modal='activity'|'goal'|'journal'|'finance'|'settings'|'milestone'|null;
+type Modal='activity'|'habit'|'goal'|'journal'|'finance'|'settings'|'milestone'|null;
 type ProgressSub='attributes'|'fitness'|'finance'|'achievements';
 const ICONS={home:Home,today:CheckCheck,progress:BarChart3,goals:Target,journal:BookOpen};
 const ATTR_ICONS:Record<Attribute,typeof Activity>={sales:BriefcaseBusiness,communication:MessageCircle,presence:Users,discipline:CheckCircle2,resilience:Shield,physical:Dumbbell,knowledge:Brain,business:Wallet};
@@ -45,6 +45,7 @@ function App(){
   const [modal,setModal]=useState<Modal>(null);
   const [toast,setToast]=useState('');
   const [selectedHabit,setSelectedHabit]=useState<Habit|null>(null);
+  const [editingHabit,setEditingHabit]=useState<Habit|null>(null);
   const [milestoneAttribute,setMilestoneAttribute]=useState<Attribute>('sales');
   const fileRef=useRef<HTMLInputElement>(null);
   const reload=useCallback(async()=>{setData(await snapshot());},[]);
@@ -62,7 +63,7 @@ function App(){
   const dailyPercent=allHabits.length?Math.round(doneCount/allHabits.length*100):100;
   const level=overallLevel(scored,data.unlocks);
   const unlocksToDo=attributes.filter(a=>progressFor(a,scored,data.unlocks).locked);
-  const achieved=achievements(scored,data.goals.filter(g=>g.completed).length,streak);
+  const achieved=achievements(scored,data.goals.filter(g=>goalProgress(g,scored).completed).length,streak);
   const toastMessage=(s:string)=>setToast(s);
   const mutation=async(job:()=>Promise<unknown>,message:string)=>{try{await job();await reload();setModal(null);setSelectedHabit(null);setToast(message);}catch(e){console.error(e);toastMessage('Could not save changes');}};
   const saveAction=async(action:Omit<Action,'id'|'createdAt'>)=>{
@@ -74,6 +75,7 @@ function App(){
     else await saveAction({date:today,title:habit.title,attribute:habit.attribute,baseXp:habit.xp,kind:'routine',templateId:habit.id});
   };
   const showLog=(habit?:Habit)=>{setSelectedHabit(habit||null);setModal('activity');};
+  const openHabitEditor=(habit?:Habit)=>{setEditingHabit(habit||null);setModal('habit');};
   const isReminderDue=useMemo(()=>{
     const time=data.settings.reminderHour;
     if(!time||time==='off')return false;
@@ -150,11 +152,12 @@ function App(){
         {screen==='today'&&<>
           <PageHeader kicker="DAILY EXECUTION" title="Today" subtitle={nextDayLabel}/>
           <div className="today-summary"><Ring value={dailyPercent} size={100} label="complete"/><div><span className="eyebrow">DAILY STANDARD</span><strong>{doneCount}<span> / {allHabits.length}</span></strong><p>{doneCount===allHabits.length?'Standards complete. Well executed.':'Focus on the next action.'}</p></div></div>
-          <SectionTitle title="Non-negotiables" action="Configure" onClick={()=>setModal('settings')}/>
+          <SectionTitle title="Non-negotiables" action="Manage" onClick={()=>setModal('settings')}/>
           <div className="list-card">{allHabits.map(h=><HabitRow key={h.id} habit={h} done={habitDone(h.id)} onToggle={()=>toggleHabit(h)}/>)}</div>
+          <button type="button" className="secondary-button full-button habit-create-button" onClick={()=>openHabitEditor()}><Plus size={17}/> Create recurring activity</button>
           <SectionTitle title="Quick log"/>
           <div className="quick-log-grid">
-            {[{title:'Gym session',attribute:'physical' as Attribute,icon:Dumbbell},{title:'Skill practice',attribute:'knowledge' as Attribute,icon:Brain},{title:'Sales calls',attribute:'sales' as Attribute,icon:BriefcaseBusiness},{title:'Resilience work',attribute:'resilience' as Attribute,icon:Shield}].map(x=><button className="quick-tile" key={x.title} onClick={()=>showLog({id:`quick-${x.title}`,title:x.title,attribute:x.attribute,xp:10,detail:'Quick entry',enabled:true,frequency:'daily'})}><x.icon size={21}/><span>{x.title}</span><Plus size={15}/></button>)}
+            {[{title:'Gym session',attribute:'physical' as Attribute,icon:Dumbbell},{title:'Skill practice',attribute:'knowledge' as Attribute,icon:Brain},{title:'Business building',attribute:'business' as Attribute,icon:Wallet},{title:'Resilience work',attribute:'resilience' as Attribute,icon:Shield}].map(x=><button className="quick-tile" key={x.title} onClick={()=>showLog({id:`quick-${x.title}`,title:x.title,attribute:x.attribute,xp:10,detail:'Quick entry',enabled:true,frequency:'daily'})}><x.icon size={21}/><span>{x.title}</span><Plus size={15}/></button>)}
           </div>
           <SectionTitle title="Activity timeline" action="Add" onClick={()=>showLog()}/>
           {todayActions.length?<div className="list-card">{[...todayActions].sort((a,b)=>b.createdAt-a.createdAt).map(a=><div className="timeline-item" key={a.id}><div className="timeline-dot"><Check size={15}/></div><div><strong>{a.title}</strong><small>{LABELS[a.attribute]} · {new Date(a.createdAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</small></div><span className="xp-accent">+{a.earned} XP</span><button className="icon-button faint" aria-label={`Delete ${a.title}`} onClick={()=>mutation(()=>db.actions.delete(a.id),'Activity deleted')}><Trash2 size={15}/></button></div>)}</div>:<EmptyState icon={Clock3} title="No actions logged yet" body="Complete a standard or log an activity to begin."/>}
@@ -174,10 +177,10 @@ function App(){
         </>}
         {screen==='goals'&&<>
           <PageHeader kicker="YOUR LONG GAME" title="Objectives" subtitle="Turn ambitions into measurable targets."/>
-          <div className="goal-summary"><div><span className="eyebrow">ACTIVE GOALS</span><strong>{data.goals.filter(g=>!g.completed).length}</strong></div><div><span className="eyebrow">COMPLETED</span><strong>{data.goals.filter(g=>g.completed).length}</strong></div><button onClick={()=>setModal('goal')} className="round-add" aria-label="Create goal"><Plus size={22}/></button></div>
+          <div className="goal-summary"><div><span className="eyebrow">ACTIVE GOALS</span><strong>{data.goals.filter(g=>!goalProgress(g,scored).completed).length}</strong></div><div><span className="eyebrow">COMPLETED</span><strong>{data.goals.filter(g=>goalProgress(g,scored).completed).length}</strong></div><button onClick={()=>setModal('goal')} className="round-add" aria-label="Create goal"><Plus size={22}/></button></div>
           <SectionTitle title="Active quests" action="New goal" onClick={()=>setModal('goal')}/>
-          {data.goals.length?<div className="goal-list">{data.goals.map(g=>{const pct=Math.min(100,Math.round(g.current/g.target*100));return <div className="goal-card" key={g.id}><div className="goal-card-top"><div><Pill tone={g.completed?'green':'violet'}>{g.completed?'COMPLETE':LABELS[g.attribute].toUpperCase()}</Pill><h3>{g.title}</h3></div><button className="icon-button faint" aria-label={`Delete goal ${g.title}`} onClick={()=>mutation(()=>db.goals.delete(g.id),'Goal removed')}><Trash2 size={16}/></button></div><div className="goal-numbers"><strong>{formatNumber(g.current)} <small>/ {formatNumber(g.target)} {g.unit}</small></strong><span>{pct}%</span></div><div className="track bigger"><span style={{width:`${pct}%`}}/></div><div className="goal-foot"><small>{g.due?'Due '+shortDate(g.due):'No deadline'}</small><div className="increment-actions"><button aria-label="Subtract one" disabled={g.current<=0} onClick={()=>mutation(()=>db.goals.update(g.id,{current:Math.max(0,g.current-1),completed:false}),'Goal updated')}><Minus size={15}/></button><button aria-label="Add one" disabled={g.completed} onClick={()=>mutation(()=>db.goals.update(g.id,{current:Math.min(g.target,g.current+1),completed:g.current+1>=g.target}),'Goal updated')}><Plus size={15}/></button></div></div></div>;})}</div>:<EmptyState icon={Target} title="Set your first target" body="Create a goal with a number to work towards."/>}
-          <div className="info-card"><Target size={19}/><div><strong>Quest rules</strong><p>Quest progress is separate from XP. Complete a real target and log a milestone activity to claim the XP you decide it deserves.</p></div></div>
+          {data.goals.length?<div className="goal-list">{data.goals.map(g=>{const gp=goalProgress(g,scored);const pct=Math.min(100,Math.round(gp.current/g.target*100));return <div className="goal-card" key={g.id}><div className="goal-card-top"><div><Pill tone={gp.completed?'green':'violet'}>{gp.completed?'COMPLETE':LABELS[g.attribute].toUpperCase()}</Pill><h3>{g.title}</h3></div><button className="icon-button faint" aria-label={`Delete goal ${g.title}`} onClick={()=>mutation(()=>db.goals.delete(g.id),'Goal removed')}><Trash2 size={16}/></button></div><div className="goal-numbers"><strong>{formatNumber(gp.current)} <small>/ {formatNumber(g.target)} {g.unit}</small></strong><span>{pct}%</span></div><div className="track bigger"><span style={{width:`${pct}%`}}/></div><div className="goal-foot"><small>{g.linkedHabitId?`Auto-linked · ${data.habits.find(h=>h.id===g.linkedHabitId)?.title||'Archived habit'}`:g.due?'Due '+shortDate(g.due):'Manual tracking'}</small><div className="increment-actions"><button aria-label="Subtract one" disabled={g.current<=0} onClick={()=>mutation(()=>db.goals.update(g.id,{current:Math.max(0,g.current-1),completed:false}),'Goal updated')}><Minus size={15}/></button><button aria-label="Add one" disabled={gp.completed} onClick={()=>mutation(()=>db.goals.update(g.id,{current:Math.min(g.target,g.current+1),completed:g.current+1>=g.target}),'Goal updated')}><Plus size={15}/></button></div></div></div>;})}</div>:<EmptyState icon={Target} title="Set your first target" body="Create a goal with a number to work towards."/>}
+          <div className="info-card"><Target size={19}/><div><strong>Quest rules</strong><p>Link a quest to a recurring activity to count logged sessions automatically. Manual adjustments remain available. XP is earned only when an activity is logged, not again when a quest completes.</p></div></div>
           <button className="primary-button full-button bottom-cta" onClick={()=>setModal('goal')}><Plus size={19}/> Create goal</button>
         </>}
         {screen==='journal'&&<>
@@ -192,7 +195,8 @@ function App(){
       <nav className="tabbar" aria-label="Main navigation">{(['home','today','progress','goals','journal'] as Screen[]).map(name=>{const Icon=ICONS[name];return <button key={name} className={`tab ${screen===name?'active':''}`} onClick={()=>setScreen(name)} aria-current={screen===name?'page':undefined}><Icon size={21} strokeWidth={screen===name?2.4:1.85}/><span>{name[0].toUpperCase()+name.slice(1)}</span></button>;})}</nav>
     </div>
     {modal==='activity'&&<ActivityModal initial={selectedHabit} close={()=>{setModal(null);setSelectedHabit(null);}} save={saveAction}/>}
-    {modal==='goal'&&<GoalModal close={()=>setModal(null)} save={(goal)=>mutation(()=>db.goals.put(goal),'Goal created')}/>}
+    {modal==='habit'&&<HabitModal initial={editingHabit} close={()=>{setModal(null);setEditingHabit(null);}} save={(habit)=>mutation(()=>db.habits.put(habit),editingHabit?'Activity updated':'Activity created')}/>}
+    {modal==='goal'&&<GoalModal habits={data.habits} close={()=>setModal(null)} save={(goal)=>mutation(()=>db.goals.put(goal),'Goal created')}/>}
     {modal==='journal'&&<JournalModal close={()=>setModal(null)} save={(entry)=>mutation(()=>db.journal.put(entry),'Journal entry saved')}/>}
     {modal==='finance'&&<FinanceModal close={()=>setModal(null)} save={(entry)=>mutation(()=>db.transactions.put(entry),'Transaction added')}/>}
     {modal==='milestone'&&<MilestoneModal attribute={milestoneAttribute} next={progressFor(milestoneAttribute,scored,data.unlocks).nextLevel} close={()=>setModal(null)} save={async(note)=>{
@@ -225,7 +229,7 @@ function ActivityModal({initial,close,save}:{initial:Habit|null;close:()=>void;s
   const submit=async(e:FormEvent)=>{e.preventDefault();if(!title.trim()||busy)return;setBusy(true);try{await save({title:title.trim(),date,attribute,baseXp:kind==='milestone'?50:xp,kind,templateId:initial?.id,note,metrics:{sets:sets?Number(sets):undefined,reps:reps?Number(reps):undefined,weight:weight?Number(weight):undefined,duration:duration?Number(duration):undefined}});}finally{setBusy(false);}};
   return <Overlay title="Log an activity" subtitle="One action. One primary attribute." close={close}><form className="modal-form" onSubmit={submit}>
     <Field label="WHAT DID YOU DO?"><input autoFocus placeholder="e.g. Bench press, Spanish practice" value={title} onChange={e=>setTitle(e.target.value)} required maxLength={90}/></Field>
-    <div className="two-fields"><Field label="ATTRIBUTE"><select value={attribute} onChange={e=>setAttribute(e.target.value as Attribute)}>{allAttributes.filter(a=>a!=='business').map(a=><option key={a} value={a}>{LABELS[a]}</option>)}</select></Field><Field label="DATE"><input type="date" max={dateKey()} value={date} onChange={e=>setDate(e.target.value)} required/></Field></div>
+    <div className="two-fields"><Field label="ATTRIBUTE"><select value={attribute} onChange={e=>setAttribute(e.target.value as Attribute)}>{attributes.map(a=><option key={a} value={a}>{LABELS[a]}</option>)}</select></Field><Field label="DATE"><input type="date" max={dateKey()} value={date} onChange={e=>setDate(e.target.value)} required/></Field></div>
     <Field label="ACTION TYPE"><div className="choice-row"><button type="button" className={kind==='routine'?'selected':''} onClick={()=>setKind('routine')}>Routine</button><button type="button" className={kind==='milestone'?'selected':''} onClick={()=>setKind('milestone')}>Major milestone</button></div></Field>
     {kind==='routine'?<Field label="BASE XP"><div className="xp-options">{[5,10,15,20].map(n=><button type="button" className={xp===n?'selected':''} onClick={()=>setXp(n)} key={n}>+{n}</button>)}</div><small className="helper">Repeated actions have diminishing returns; routine XP is capped at 30 per attribute/day.</small></Field>:<div className="info-note"><Trophy size={16}/> Major milestones award 50 XP. Use these for meaningful achievements, not everyday tasks.</div>}
     <div className="two-fields"><Field label="SETS (OPTIONAL)"><input inputMode="numeric" type="number" min="0" max="100" value={sets} onChange={e=>setSets(e.target.value)} placeholder="3"/></Field><Field label="REPS (OPTIONAL)"><input inputMode="numeric" type="number" min="0" max="1000" value={reps} onChange={e=>setReps(e.target.value)} placeholder="8"/></Field></div>
