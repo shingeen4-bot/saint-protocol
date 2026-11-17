@@ -44,8 +44,8 @@ test('radar lifetime mode uses actual attribute level and next-level progress', 
   const sales=metrics.find(metric=>metric.attribute==='sales');
   assert.equal(sales.level,1);
   assert.equal(sales.value,1.5);
-  assert.equal(metrics.length,7);
-  assert.equal(metrics.some(metric=>metric.attribute==='business'),false);
+  assert.equal(metrics.length,8);
+  assert.equal(metrics.some(metric=>metric.attribute==='business'),true);
 });
 test('radar seven-day window includes both endpoints and excludes older or future actions', async()=>{
   const {radarMetrics,scoreActions}=await engine;
@@ -72,4 +72,25 @@ test('radar 30-day view counts correctly and is distinct from lifetime levels',a
   const lifetime=radarMetrics(scored,[],'lifetime','2026-11-17');
   assert.equal(lifetime.find(m=>m.attribute==='physical').level,3);
   assert.ok(lifetime.find(m=>m.attribute==='physical').value<30);
+});
+
+test('Business is an active eighth attribute and participates in overall level',async()=>{
+ const {scoreActions,radarMetrics,overallLevel,progressFor}=await engine;
+ const before=overallLevel([],[]);
+ const actions=scoreActions([action('8','2026-11-17','First business session','business',100,'milestone')]);
+ assert.equal(progressFor('business',actions,[]).level,2);
+ assert.equal(radarMetrics(actions,[],'lifetime','2026-11-17').length,8);
+ assert.equal(before,2);
+});
+test('linked goals count actual logged habit sessions after creation, without double counting manual progress',async()=>{
+ const {scoreActions,goalProgress}=await engine;
+ const actions=scoreActions([
+  {...action('1','2026-11-09','Old practice','business',5),templateId:'h-business'},
+  {...action('2','2026-11-17','Practice','business',5),templateId:'h-business'},
+  {...action('3','2026-11-18','Practice','business',5),templateId:'h-business'},
+  {...action('4','2026-11-18','Other','business',5),templateId:'h-other'}]);
+ const goal={target:4,current:1,completed:false,linkedHabitId:'h-business',startedAt:'2026-11-17'};
+ assert.deepEqual(goalProgress(goal,actions),{current:3,auto:2,completed:false});
+ assert.deepEqual(goalProgress({...goal,current:2},actions),{current:4,auto:2,completed:true});
+ assert.equal(goalProgress({...goal,linkedHabitId:undefined},actions).current,1);
 });
