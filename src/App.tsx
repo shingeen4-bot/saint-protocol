@@ -7,12 +7,12 @@ import {
   Users, Wallet, X, Zap
 } from 'lucide-react';
 import {Bar,BarChart,CartesianGrid,PolarAngleAxis,PolarGrid,PolarRadiusAxis,Radar,RadarChart,ResponsiveContainer,Tooltip,XAxis,YAxis} from 'recharts';
-import {db,exportBackup,importSnapshot,initialise,snapshot} from './db';
-import {achievements, currentStreak, dateKey, dateOffset, last7, overallLevel, progressFor, goalProgress, radarMetrics, radarScaleMax, scoreActions,uid,type RadarPeriod} from './engine';
+import {db,exportBackup,importSnapshot,initialise,snapshot,saveSalesCounts} from './db';
+import {achievements, currentStreak, dateKey, dateOffset, last7, overallLevel, progressFor, goalProgress, radarMetrics, radarScaleMax, scoreActions,salesSummary,SALES_CALLS_TARGET,SALES_OUTREACH_TARGET,uid,type SalesCounts,type RadarPeriod} from './engine';
 import {attributes,starterSettings,type Action,type Attribute,type Goal,type Habit,type Journal,type Settings,type Snapshot,type Transaction} from './types';
 
 type Screen='home'|'today'|'progress'|'goals'|'journal';
-type Modal='activity'|'habit'|'goal'|'journal'|'finance'|'settings'|'milestone'|null;
+type Modal='activity'|'habit'|'sales'|'goal'|'journal'|'finance'|'settings'|'milestone'|null;
 type ProgressSub='attributes'|'fitness'|'finance'|'achievements';
 const ICONS={home:Home,today:CheckCheck,progress:BarChart3,goals:Target,journal:BookOpen};
 const ATTR_ICONS:Record<Attribute,typeof Activity>={sales:BriefcaseBusiness,communication:MessageCircle,presence:Users,discipline:CheckCircle2,resilience:Shield,physical:Dumbbell,knowledge:Brain,business:Wallet};
@@ -53,6 +53,8 @@ function App(){
   useEffect(()=>{if(!toast)return;const t=window.setTimeout(()=>setToast(''),3800);return()=>clearTimeout(t);},[toast]);
   const scored=useMemo(()=>scoreActions(data.actions),[data.actions]);
   const today=dateKey();
+  const sales=salesSummary(data.actions,today);
+  const salesWeekday=![0,6].includes(new Date().getDay());
   const todayActions=scored.filter(a=>a.date===today);
   const todayXp=todayActions.reduce((s,a)=>s+a.earned,0);
   const allXp=scored.reduce((s,a)=>s+a.earned,0);
@@ -70,6 +72,7 @@ function App(){
     await mutation(()=>db.actions.put({...action,id:uid(),createdAt:Date.now()}),'Activity saved');
   };
   const toggleHabit=async(habit:Habit)=>{
+    if(habit.id==='h-sales'||habit.id==='h-sales-calls'){setModal('sales');return;}
     const existing=data.actions.find(a=>a.date===today&&a.templateId===habit.id);
     if(existing)await mutation(()=>db.actions.delete(existing.id),'Habit unchecked');
     else await saveAction({date:today,title:habit.title,attribute:habit.attribute,baseXp:habit.xp,kind:'routine',templateId:habit.id});
@@ -144,6 +147,7 @@ function App(){
             <p className="radar-disclaimer">{radarRecent?'All attributes use the same XP scale within this period. The 7-day and 30-day charts have different scales.':'Lifetime and recent XP views use different units, so compare their patterns rather than their areas.'}</p>
           </section>
           <SectionTitle title="Daily standards" action="View all" onClick={()=>setScreen('today')}/>
+          {salesWeekday&&<SalesTracker counts={sales} open={()=>{setScreen('today');setModal('sales');}} compact/>}
           <div className="list-card">{allHabits.slice(0,4).map(h=><HabitRow key={h.id} habit={h} done={habitDone(h.id)} onToggle={()=>toggleHabit(h)}/>)}</div>
           <SectionTitle title="Attributes" action="Details" onClick={()=>{setScreen('progress');setSub('attributes');}}/>
           <div className="skills-card">{attributes.slice(0,4).map(a=>{const p=progressFor(a,scored,data.unlocks);const Icon=ATTR_ICONS[a];return <div className="skill-row" key={a}><div className="skill-icon"><Icon size={17}/></div><div className="skill-body"><div className="skill-header"><strong>{LABELS[a]}</strong><span>LV {p.level}</span></div><div className="track"><span style={{width:`${p.percent}%`}}/></div></div></div>;})}</div>
@@ -153,6 +157,7 @@ function App(){
           <PageHeader kicker="DAILY EXECUTION" title="Today" subtitle={nextDayLabel}/>
           <div className="today-summary"><Ring value={dailyPercent} size={100} label="complete"/><div><span className="eyebrow">DAILY STANDARD</span><strong>{doneCount}<span> / {allHabits.length}</span></strong><p>{doneCount===allHabits.length?'Standards complete. Well executed.':'Focus on the next action.'}</p></div></div>
           <SectionTitle title="Non-negotiables" action="Manage" onClick={()=>setModal('settings')}/>
+          {salesWeekday&&<SalesTracker counts={sales} open={()=>setModal('sales')}/>}
           <div className="list-card">{allHabits.map(h=><HabitRow key={h.id} habit={h} done={habitDone(h.id)} onToggle={()=>toggleHabit(h)}/>)}</div>
           <button type="button" className="secondary-button full-button habit-create-button" onClick={()=>openHabitEditor()}><Plus size={17}/> Create recurring activity</button>
           <SectionTitle title="Quick log"/>
@@ -195,6 +200,7 @@ function App(){
       <nav className="tabbar" aria-label="Main navigation">{(['home','today','progress','goals','journal'] as Screen[]).map(name=>{const Icon=ICONS[name];return <button key={name} className={`tab ${screen===name?'active':''}`} onClick={()=>setScreen(name)} aria-current={screen===name?'page':undefined}><Icon size={21} strokeWidth={screen===name?2.4:1.85}/><span>{name[0].toUpperCase()+name.slice(1)}</span></button>;})}</nav>
     </div>
     {modal==='activity'&&<ActivityModal initial={selectedHabit} close={()=>{setModal(null);setSelectedHabit(null);}} save={saveAction}/>}
+    {modal==='sales'&&<SalesLogModal counts={sales} close={()=>setModal(null)} save={async counts=>{await mutation(()=>saveSalesCounts(today,counts),'Sales totals saved');}}/>}
     {modal==='habit'&&<HabitModal initial={editingHabit} close={()=>{setModal(null);setEditingHabit(null);}} save={(habit)=>mutation(()=>db.habits.put(habit),editingHabit?'Activity updated':'Activity created')}/>}
     {modal==='goal'&&<GoalModal habits={data.habits} close={()=>setModal(null)} save={(goal)=>mutation(()=>db.goals.put(goal),'Goal created')}/>}
     {modal==='journal'&&<JournalModal close={()=>setModal(null)} save={(entry)=>mutation(()=>db.journal.put(entry),'Journal entry saved')}/>}
@@ -212,6 +218,40 @@ function App(){
   </div>;
 }
 function PageHeader({kicker,title,subtitle}:{kicker:string;title:string;subtitle:string}){return <div className="page-header"><span className="eyebrow">{kicker}</span><h1>{title}<span className="accent-dot">.</span></h1><p>{subtitle}</p></div>;}
+function SalesTracker({counts,open,compact=false}:{counts:ReturnType<typeof salesSummary>;open:()=>void;compact?:boolean}){
+  const targets=[{title:'Total outreach',value:counts.total,target:SALES_OUTREACH_TARGET,done:counts.outreachComplete,xp:5},{title:'Calls',value:counts.calls,target:SALES_CALLS_TARGET,done:counts.callsComplete,xp:15}];
+  return <section className={compact?'sales-tracker sales-tracker-compact':'sales-tracker'} aria-label="Weekday Sales targets">
+    <div className="sales-tracker-top"><span className="metric-label"><BriefcaseBusiness size={15}/> WEEKDAY SALES</span><button type="button" onClick={open}>{compact?'Update':'Log numbers'} <ChevronRight size={15}/></button></div>
+    <div className="sales-tracker-metrics">{targets.map(t=><div className="sales-tracker-metric" key={t.title}>
+      <div className="sales-tracker-line"><span>{t.title}</span><strong>{t.value}<small> / {t.target}</small></strong></div>
+      <div className="track bigger"><span style={{width:`${Math.min(100,t.value/t.target*100)}%`}}/></div>
+      <small>{t.done?'Target achieved':t.title==='Calls'?'Calls count towards your 50 touches':'Calls + emails + LinkedIn'} · +{t.xp} XP</small>
+    </div>)}</div>
+    {!compact&&<p className="sales-tracker-breakdown">Today: {counts.calls} calls · {counts.emails} emails · {counts.messages} LinkedIn messages. These are cumulative totals, not additions per save.</p>}
+  </section>;
+}
+function SalesLogModal({counts,close,save}:{counts:ReturnType<typeof salesSummary>;close:()=>void;save:(counts:SalesCounts)=>Promise<void>}){
+  const [calls,setCalls]=useState(String(counts.calls));
+  const [emails,setEmails]=useState(String(counts.emails));
+  const [messages,setMessages]=useState(String(counts.messages));
+  const [busy,setBusy]=useState(false);
+  const values=[calls,emails,messages];
+  const valid=values.every(value=>/^\\d+$/.test(value.trim())&&Number.isSafeInteger(Number(value))&&Number(value)<=10000);
+  const total=valid?values.reduce((sum,value)=>sum+Number(value),0):0;
+  return <Overlay title="Sales activity" subtitle="Record your running totals for today." close={close}>
+    <form className="modal-form" onSubmit={async e=>{e.preventDefault();if(!valid||busy)return;setBusy(true);try{await save({calls:Number(calls),emails:Number(emails),messages:Number(messages)});}finally{setBusy(false);}}}>
+      <div className="sales-entry-banner"><span>OUTREACH</span><strong>{valid?total:'—'} / {SALES_OUTREACH_TARGET}</strong><small>Includes calls, emails and LinkedIn messages</small></div>
+      <div className="sales-entry-fields">
+        <Field label="CALLS"><input inputMode="numeric" type="number" min="0" max="10000" step="1" value={calls} onChange={e=>setCalls(e.target.value)} required/></Field>
+        <Field label="EMAILS"><input inputMode="numeric" type="number" min="0" max="10000" step="1" value={emails} onChange={e=>setEmails(e.target.value)} required/></Field>
+        <Field label="LINKEDIN MESSAGES"><input inputMode="numeric" type="number" min="0" max="10000" step="1" value={messages} onChange={e=>setMessages(e.target.value)} required/></Field>
+      </div>
+      <div className="sales-entry-results"><div><span>50 total touches</span><strong>{valid&&total>=SALES_OUTREACH_TARGET?'✓ +5 XP':'0 / +5 XP'}</strong></div><div><span>30 calls</span><strong>{valid&&Number(calls)>=SALES_CALLS_TARGET?'✓ +15 XP':'0 / +15 XP'}</strong></div></div>
+      <p className="helper">These are your cumulative totals for today. Enter the full number you've completed so far, not the number since your last entry. Rewards are granted once per target per weekday; reducing totals below a target removes its award.</p>
+      <button className="primary-button full-button" type="submit" disabled={!valid||busy}><Save size={18}/> Save today's numbers</button>
+    </form>
+  </Overlay>;
+}
 function HabitRow({habit,done,onToggle}:{habit:Habit;done:boolean;onToggle:()=>void}){const Icon=ATTR_ICONS[habit.attribute];return <button className={`habit-row ${done?'is-done':''}`} onClick={onToggle} aria-pressed={done}><span className="habit-check">{done&&<Check size={17} strokeWidth={3}/>}</span><span className="habit-copy"><strong>{habit.title}</strong><small>{habit.detail}</small></span><span className="habit-xp">+{habit.xp} XP</span><Icon size={16} className="habit-attr"/></button>;}
 function FitnessPanel({actions,onLog}:{actions:ReturnType<typeof scoreActions>;onLog:()=>void}){
   const training=actions.filter(a=>a.attribute==='physical');const volume=training.reduce((s,a)=>s+(a.metrics?.sets||0)*(a.metrics?.reps||0)*(a.metrics?.weight||0),0);
@@ -283,10 +323,10 @@ function SettingsModal({data,fileRef,close,save,toggle,onNewHabit,onEditHabit,on
       <div className="setting-divider"/>
       <div className="habit-manager-head"><span className="field-label">YOUR RECURRING ACTIVITIES</span><button type="button" onClick={onNewHabit}><Plus size={15}/> Add</button></div>
       <div className="settings-habits">{data.habits.map(h=><div className="habit-manage-row" key={h.id}>
-        <button type="button" className={h.enabled?'small-check checked':'small-check'} aria-label={h.enabled?'Disable '+h.title:'Enable '+h.title} onClick={()=>toggle({...h,enabled:!h.enabled})}>{h.enabled&&<Check size={13}/>}</button>
+        <button type="button" className={h.enabled?'small-check checked':'small-check'} aria-label={h.enabled?'Disable '+h.title:'Enable '+h.title} disabled={h.id==='h-sales'||h.id==='h-sales-calls'} onClick={()=>toggle({...h,enabled:!h.enabled})}>{h.enabled&&<Check size={13}/>}</button>
         <div className="habit-manage-copy"><strong>{h.title}</strong><small>{LABELS[h.attribute]} · +{h.xp} XP · {h.frequency==='daily'?'Daily':'Weekdays'}</small></div>
-        <button type="button" className="habit-edit-icon" aria-label={'Edit '+h.title} onClick={()=>onEditHabit(h)}><Settings2 size={16}/></button>
-        <button type="button" className="habit-edit-icon" aria-label={'Delete '+h.title} onClick={()=>{if(window.confirm('Delete this recurring activity? Past activity records and XP will remain, but linked quests will stop receiving new sessions.'))void onRemoveHabit(h);}}><Trash2 size={16}/></button>
+        <button type="button" className="habit-edit-icon" aria-label={'Edit '+h.title} onClick={()=>onEditHabit(h)} disabled={h.id==='h-sales'||h.id==='h-sales-calls'} title={h.id==='h-sales'||h.id==='h-sales-calls'?'Managed by Sales tracker':'Edit activity'}><Settings2 size={16}/></button>
+        <button type="button" className="habit-edit-icon" aria-label={'Delete '+h.title} disabled={h.id==='h-sales'||h.id==='h-sales-calls'} onClick={()=>{if(window.confirm('Delete this recurring activity? Past activity records and XP will remain, but linked quests will stop receiving new sessions.'))void onRemoveHabit(h);}}><Trash2 size={16}/></button>
       </div>)}</div>
       <small className="helper">You can add, edit, disable or delete habits. Existing activity history is retained. Removing a linked habit stops future automatic quest progress.</small>
       <div className="setting-divider"/>
