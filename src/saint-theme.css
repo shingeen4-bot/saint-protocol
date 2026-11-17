@@ -92,3 +92,31 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .radar-disclaimer{margin:0;color:#81768F;font-size:10px;line-height:1.55}
 @media(max-width:360px){.radar-period-switch button{font-size:10px}.overview-radar-card{padding:14px 12px}.overview-radar-chart{height:270px}.radar-chart-area{min-height:270px}.radar-legend-item{padding:9px 7px}}
 @media(prefers-reduced-motion:reduce){.radar-period-switch button{transition:none}.overview-radar-chart .recharts-radar-polygon{filter:none}}
+
+
+/* v0.4.1 · iPhone standalone safe-area header repair
+   The former fixed 84px height was shorter than the safe-area top padding,
+   brand two-line content and bottom padding combined. Let the header grow. */
+.topbar{
+  height:auto;
+  min-height:calc(94px + env(safe-area-inset-top,0px));
+  padding-top:calc(17px + env(safe-area-inset-top,0px));
+  padding-bottom:17px;
+  align-items:center;
+  gap:12px;
+}
+.brandmark{min-width:0;align-items:center}
+.brand-copy{
+  min-width:0;
+  max-width:100%;
+  line-height:1.2;
+  gap:8px;
+  overflow:visible;
+  white-space:normal;
+}
+.brand-copy small{line-height:1.25}
+.topbar>.icon-button{flex-shrink:0}
+@media(max-width:360px){
+  .brand-copy{font-size:14px;letter-spacing:.13em}
+  .brand-copy small{font-size:7px;letter-spacing:.17em}
+}
