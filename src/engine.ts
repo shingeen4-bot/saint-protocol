@@ -75,3 +75,17 @@ export function goalProgress(goal: {current:number;target:number;completed:boole
   const current=Math.max(0,Math.min(goal.target,goal.current+auto));
   return {current,auto,completed:goal.completed || current>=goal.target};
 }
+
+/** Sales metrics represent cumulative daily totals, not additional contacts on each save. */
+export const SALES_OUTREACH_TARGET=50;
+export const SALES_CALLS_TARGET=30;
+export type SalesCounts={calls:number;emails:number;messages:number};
+export const salesMetricsId=(date:string)=>'sales-metrics-'+date;
+export const salesAwardId=(kind:'outreach'|'calls',date:string)=>'sales-award-'+kind+'-'+date;
+export function salesSummary(actions:Action[],date:string){
+ const record=actions.find(a=>a.id===salesMetricsId(date));
+ const safe=(value:number|undefined)=>Number.isFinite(value)&&value!>=0?Math.floor(value!):0;
+ const calls=safe(record?.metrics?.calls),emails=safe(record?.metrics?.emails),messages=safe(record?.metrics?.messages);
+ const total=calls+emails+messages;
+ return {calls,emails,messages,total,outreachComplete:total>=SALES_OUTREACH_TARGET,callsComplete:calls>=SALES_CALLS_TARGET};
+}
