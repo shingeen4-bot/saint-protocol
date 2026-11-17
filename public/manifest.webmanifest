@@ -1,0 +1,25 @@
+{
+  "id": "./",
+  "name": "Saint Protocol \u2014 Personal Performance",
+  "short_name": "Saint Protocol",
+  "description": "Your private performance system for daily execution, goals, XP, fitness, finances and reflection.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#08070D",
+  "theme_color": "#08070D",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
