@@ -136,3 +136,33 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .habit-enable-field{display:flex;align-items:center;gap:10px;color:#D7C9EB;font-size:12px;font-weight:650}
 .habit-enable-field input{accent-color:#AA8BFF;width:18px;height:18px}
 @media(max-width:360px){.habit-manage-row{gap:7px;padding:10px 7px}.habit-edit-icon{width:30px;height:30px}}
+
+/* v0.6 — iPhone-friendly weekday sales logging */
+.sales-tracker{margin:0 0 14px;padding:17px 15px 14px;border:1px solid #48335E;border-radius:17px;background:radial-gradient(ellipse at 100% 0,rgba(158,112,244,.13),transparent 65%),#17111F;box-shadow:0 0 23px rgba(158,112,244,.055)}
+.sales-tracker-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}
+.sales-tracker-top button{display:flex;align-items:center;gap:2px;background:#332343;border:1px solid #644483;border-radius:9px;color:#D9BFFF;font-size:11px;font-weight:700;min-height:35px;padding:0 9px;white-space:nowrap}
+.sales-tracker-metrics{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.sales-tracker-metric{min-width:0}
+.sales-tracker-line{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+.sales-tracker-line>span{font-size:10px;color:#BDAFD2;font-weight:650}
+.sales-tracker-line strong{font:700 18px/1 Inter,system-ui;color:#E5D4FF}
+.sales-tracker-line strong small{font-size:11px;color:#8F7BA6}
+.sales-tracker-metric>.track{height:7px;margin-bottom:8px}
+.sales-tracker-metric>small{display:block;font-size:9px;line-height:1.55;color:#A091B1}
+.sales-tracker-breakdown{margin:15px 0 0;color:#9785AA;font-size:10px;line-height:1.55}
+.sales-tracker-compact{padding:13px 13px 11px}
+.sales-tracker-compact .sales-tracker-top{margin-bottom:12px}
+.sales-tracker-compact .sales-tracker-line strong{font-size:16px}
+.sales-entry-banner{border-radius:13px;padding:15px;background:linear-gradient(125deg,#2C1A3C,#1C1429);border:1px solid #52366C;display:flex;flex-direction:column;gap:7px}
+.sales-entry-banner>span{font-size:10px;letter-spacing:.13em;font-weight:750;color:#B5A0D2}
+.sales-entry-banner>strong{font:700 30px/1.15 Inter,system-ui;color:#E8DBFC}
+.sales-entry-banner>small{font-size:10px;color:#A995C5}
+.sales-entry-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sales-entry-fields .field>span{font-size:9px;line-height:1.45;min-height:25px;display:flex;align-items:end}
+.sales-entry-fields input{min-width:0;text-align:center;font-size:17px;font-weight:700;padding:11px 5px}
+.sales-entry-results{border:1px solid #382B49;border-radius:12px;background:#1A1424;padding:5px 12px}
+.sales-entry-results>div{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;font-size:12px;color:#BBA9D2}
+.sales-entry-results>div+div{border-top:1px solid #342740}
+.sales-entry-results strong{color:#D9C4FA;font-size:12px;white-space:nowrap}
+.habit-edit-icon:disabled,.habit-manage-row .small-check:disabled{opacity:.3;cursor:not-allowed}
+@media(max-width:360px){.sales-tracker-metrics{gap:8px}.sales-tracker-line strong{font-size:15px}.sales-entry-fields{gap:6px}.sales-entry-fields input{font-size:15px}}
